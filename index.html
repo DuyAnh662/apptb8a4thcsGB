@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#f5f7fa">
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <title>Bảng Thông Báo 8A4</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.3/dist/umd/supabase.min.js"></script>
+    <script src="config.js"></script>
+    <script>
+        window.supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_KEY);
+
+        // 🔔 NOTIFICATION SETUP:
+        // - Service Worker sẽ tự động đăng ký (script.js)
+        // - Notification permission sẽ được yêu cầu khi load (setupNotifications in script.js)
+        // - Supabase realtime sẽ subscribe bảng "notification"
+        // Xem README.md & NOTIFICATION_SETUP.md để hướng dẫn chi tiết
+    </script>
+</head>
+
+<body class="theme-blue">
+
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <div class="loading-text" style="margin-top: 10px; font-size: 12px; opacity: 0.7;">Đang khởi động hệ thống...
+        </div>
+    </div>
+
+    <canvas id="sky"></canvas>
+    <div id="fireworks-container"></div>
+    <div id="particles-js"></div>
+    <main class="app-container" id="appWindow">
+        <header class="window-header">
+            <div class="header-title">Bảng thông tin</div>
+            <div class="header-actions">
+                <button id="btn-theme-toggle" class="icon-btn" type="button" aria-label="Chuyển đổi sáng/tối"><i
+                        class="fas fa-moon"></i></button>
+            </div>
+        </header>
+
+        <nav class="tab-navigation">
+            <div class="tab-indicator"></div>
+            <div class="tab-item active" data-tab="btvn"><i class="fas fa-book-open"></i> BTVN</div>
+            <div class="tab-item" data-tab="tkb"><i class="fas fa-calendar-day"></i> TKB</div>
+            <div class="tab-item" data-tab="updates"><i class="fas fa-bullhorn"></i> Tin tức</div>
+            <div class="tab-item" data-tab="notifications"><i class="fas fa-bell"></i> Thông báo</div>
+        </nav>
+
+        <div class="content-area">
+            <div id="panel-btvn" class="tab-panel active">
+                <div class="panel-scroll" id="container-btvn"></div>
+            </div>
+
+            <div id="panel-tkb" class="tab-panel">
+                <div class="panel-scroll">
+                    <div id="container-tkb-today"></div>
+                    <button class="btn-primary full-width mt-3" id="btn-full-week">
+                        <i class="fas fa-expand-alt"></i> Xem cả tuần
+                    </button>
+                </div>
+            </div>
+
+            <div id="panel-updates" class="tab-panel">
+                <div class="panel-scroll" id="container-updates"></div>
+            </div>
+
+            <div id="panel-notifications" class="tab-panel">
+                <div class="panel-scroll">
+                    <div style="padding: 15px;">
+                        <h3 style="margin-bottom: 10px;"><i class="fas fa-history"></i> Lịch sử thông báo</h3>
+                        <div id="container-notifications" style="font-size: 14px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div class="dock-wrapper">
+        <div class="glass-dock">
+            <div class="dock-icon" data-action="refresh"><i class="fas fa-sync-alt"></i></div>
+            <div class="separator"></div>
+            <div class="dock-icon" data-action="settings"><i class="fas fa-cog"></i></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-tkb">
+        <div class="modal-glass large">
+            <div class="modal-header">
+                <h3>Thời khóa biểu tuần</h3>
+                <button class="btn-close" data-close="modal-tkb"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body" id="content-full-week"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-settings">
+        <div class="modal-glass small">
+            <div class="modal-header">
+                <h3>Cài đặt</h3>
+                <button class="btn-close" data-close="modal-settings"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="card" style="background:transparent; border:none; padding:0;">
+                    <div class="setting-item" style="display:block; margin-bottom: 15px;">
+                        <div class="setting-label" style="margin-bottom: 10px;">
+                            <i class="fas fa-palette"></i> Màu chủ đạo
+                        </div>
+                        <div class="color-picker-container">
+                            <div class="color-dot blue" data-color="blue"></div>
+                            <div class="color-dot pink" data-color="pink"></div>
+                            <div class="color-dot green" data-color="green"></div>
+                            <div class="color-dot purple" data-color="purple"></div>
+                        </div>
+                    </div>
+                    <hr style="border:0; border-top:1px solid var(--glass-border); margin-bottom:15px;">
+
+                    <div class="setting-item">
+                        <div class="setting-label"><i class="fas fa-moon"></i> Chế độ tối</div>
+                        <label class="switch"><input type="checkbox" id="switch-darkmode"><span
+                                class="slider"></span></label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-label">
+                            <i class="fas fa-water"></i>Hiệu ứng tốt hơn
+                            <div style="font-size:10px; color:var(--text-sec); font-weight:400; margin-left:5px;">(Mờ
+                                kính, 3D, Particles)</div>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="switch-liquid" checked><span
+                                class="slider"></span></label>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-label"><i class="fas fa-sync"></i> Tự động làm mới</div>
+                        <label class="switch"><input type="checkbox" id="switch-autorefresh"><span
+                                class="slider"></span></label>
+                    </div>
+
+                    <hr style="border:0; border-top:1px solid var(--glass-border); margin: 15px 0;">
+
+                </div>
+                <div style="text-align:center; margin-top:20px; font-size:11px; color:var(--text-sec);">Liquid OS v4.0 •
+                    Final Stable</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="event-popup" id="eventPopup">
+        <div class="event-popup-card">
+            <button class="close" id="eventPopupClose"><i class="fas fa-times"></i></button>
+            <h3 id="eventPopupTitle">Title</h3>
+            <div id="eventPopupContent">Content</div>
+        </div>
+    </div>
+    <div id="popup-selector" class="popup-overlay">
+        <div class="selector-card">
+            <div class="selector-header">
+                <h3>Cài đặt Ứng dụng</h3>
+                <p>Chọn thiết bị của bạn để tiếp tục</p>
+                <button onclick="closeSelectorPopup()" class="btn-close-abs"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div class="platform-options">
+                <div class="platform-option android" onclick="handleAndroidClick()">
+                    <div class="plat-icon"><i class="fab fa-android"></i></div>
+                    <div class="plat-text">
+                        <b>Dành cho Android và PC</b>
+                        <span>Cài đặt trực tiếp (.apk/PWA)</span>
+                    </div>
+                </div>
+
+                <div class="platform-option ios" onclick="handleIOSClick()">
+                    <div class="plat-icon"><i class="fab fa-apple"></i></div>
+                    <div class="plat-text">
+                        <b>Dành cho iOS</b>
+                        <span>Cài đặt Profile cấu hình</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="popup-ios-guide" class="popup-overlay">
+        <div class="guide-card ios-mode">
+            <div class="guide-header">
+                <div>
+                    <h3>Cài đặt trên iPhone / iPad</h3>
+                    <div style="font-size:12px; color:var(--text-sec); margin-top:6px">Hướng dẫn từng bước để cài cấu
+                        hình (mobileconfig)</div>
+                </div>
+            </div>
+
+            <div class="guide-body">
+                <div class="ios-step">
+                    <div class="step-icon"><i class="fas fa-cloud-download-alt"></i></div>
+                    <div class="step-info">
+                        <b>Bước 1 — Tải hồ sơ</b>
+                        <p>Nhấn nút "Tải Hồ sơ" bên dưới. Nếu trình duyệt hỏi, chọn <b>Cho phép / Allow</b>.</p>
+                    </div>
+                </div>
+
+                <div class="ios-step">
+                    <div class="step-icon"><i class="fas fa-file-signature"></i></div>
+                    <div class="step-info">
+                        <b>Bước 2 — Mở Cài đặt</b>
+                        <p>Mở <b>Cài đặt</b> → vào phần <b>Đã tải về Hồ sơ</b> hoặc <b>General → Profile</b> để xem hồ
+                            sơ vừa tải.</p>
+                    </div>
+                </div>
+
+                <div class="ios-step">
+                    <div class="step-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="step-info">
+                        <b>Bước 3 — Cài và Xác nhận</b>
+                        <p>Chọn hồ sơ, sau đó nhấn <b>Install</b> và xác nhận mã PIN nếu được yêu cầu. Sau khi cài xong,
+                            quay lại ứng dụng.</p>
+                    </div>
+                </div>
+
+                <a href="TB8A4.mobileconfig" download class="btn-primary full-width mt-3">
+                    <i class="fab fa-apple"></i> Tải Hồ sơ (Config)
+                </a>
+
+                <div style="display:flex; gap:10px; margin-top:12px;">
+                    <button onclick="backToSelector()" class="btn-text-only">Quay lại chọn thiết bị</button>
+                    <button onclick="closeIOSPopup()" class="btn-primary" style="flex:1;">Đã hiểu, đóng</button>
+                </div>
+                <div id="particles-js"></div>
+                <main class="app-container" id="appWindow">
+                    <header class="window-header">
+                        <div class="header-title">Bảng thông tin</div>
+                        <div class="header-actions">
+                            <button id="btn-theme-toggle" class="icon-btn" type="button"
+                                aria-label="Chuyển đổi sáng/tối"><i class="fas fa-moon"></i></button>
+                        </div>
+                    </header>
+
+                    <nav class="tab-navigation">
+                        <div class="tab-indicator"></div>
+                        <div class="tab-item active" data-tab="btvn"><i class="fas fa-book-open"></i> BTVN</div>
+                        <div class="tab-item" data-tab="tkb"><i class="fas fa-calendar-day"></i> TKB</div>
+                        <div class="tab-item" data-tab="updates"><i class="fas fa-bullhorn"></i> Tin tức</div>
+                        <div class="tab-item" data-tab="notifications"><i class="fas fa-bell"></i> Thông báo</div>
+                    </nav>
+
+                    <div class="content-area">
+                        <div id="panel-btvn" class="tab-panel active">
+                            <div class="panel-scroll" id="container-btvn"></div>
+                        </div>
+
+                        <div id="panel-tkb" class="tab-panel">
+                            <div class="panel-scroll">
+                                <div id="container-tkb-today"></div>
+                                <button class="btn-primary full-width mt-3" id="btn-full-week">
+                                    <i class="fas fa-expand-alt"></i> Xem cả tuần
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="panel-updates" class="tab-panel">
+                            <div class="panel-scroll" id="container-updates"></div>
+                        </div>
+
+                        <div id="panel-notifications" class="tab-panel">
+                            <div class="panel-scroll">
+                                <div style="padding: 15px;">
+                                    <h3 style="margin-bottom: 10px;"><i class="fas fa-history"></i> Lịch sử thông báo
+                                    </h3>
+                                    <div id="container-notifications" style="font-size: 14px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+
+                <div class="dock-wrapper">
+                    <div class="glass-dock">
+                        <div class="dock-icon" data-action="refresh"><i class="fas fa-sync-alt"></i></div>
+                        <div class="separator"></div>
+                        <div class="dock-icon" data-action="settings"><i class="fas fa-cog"></i></div>
+                    </div>
+                </div>
+
+                <div class="modal-overlay" id="modal-tkb">
+                    <div class="modal-glass large">
+                        <div class="modal-header">
+                            <h3>Thời khóa biểu tuần</h3>
+                            <button class="btn-close" data-close="modal-tkb"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div class="modal-body" id="content-full-week"></div>
+                    </div>
+                </div>
+
+                <div class="modal-overlay" id="modal-settings">
+                    <div class="modal-glass small">
+                        <div class="modal-header">
+                            <h3>Cài đặt</h3>
+                            <button class="btn-close" data-close="modal-settings"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="card" style="background:transparent; border:none; padding:0;">
+                                <div class="setting-item" style="display:block; margin-bottom: 15px;">
+                                    <div class="setting-label" style="margin-bottom: 10px;">
+                                        <i class="fas fa-palette"></i> Màu chủ đạo
+                                    </div>
+                                    <div class="color-picker-container">
+                                        <div class="color-dot blue" data-color="blue"></div>
+                                        <div class="color-dot pink" data-color="pink"></div>
+                                        <div class="color-dot green" data-color="green"></div>
+                                        <div class="color-dot purple" data-color="purple"></div>
+                                    </div>
+                                </div>
+                                <hr style="border:0; border-top:1px solid var(--glass-border); margin-bottom:15px;">
+
+                                <div class="setting-item">
+                                    <div class="setting-label"><i class="fas fa-moon"></i> Chế độ tối</div>
+                                    <label class="switch"><input type="checkbox" id="switch-darkmode"><span
+                                            class="slider"></span></label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-label">
+                                        <i class="fas fa-water"></i>Hiệu ứng tốt hơn
+                                        <div
+                                            style="font-size:10px; color:var(--text-sec); font-weight:400; margin-left:5px;">
+                                            (Mờ
+                                            kính, 3D, Particles)</div>
+                                    </div>
+                                    <label class="switch"><input type="checkbox" id="switch-liquid" checked><span
+                                            class="slider"></span></label>
+                                </div>
+                                <div class="setting-item">
+                                    <div class="setting-label"><i class="fas fa-sync"></i> Tự động làm mới</div>
+                                    <label class="switch"><input type="checkbox" id="switch-autorefresh"><span
+                                            class="slider"></span></label>
+                                </div>
+
+                                <hr style="border:0; border-top:1px solid var(--glass-border); margin: 15px 0;">
+
+                            </div>
+                            <div style="text-align:center; margin-top:20px; font-size:11px; color:var(--text-sec);">
+                                Liquid OS v4.0 •
+                                Final Stable</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="event-popup" id="eventPopup">
+                    <div class="event-popup-card">
+                        <button class="close" id="eventPopupClose"><i class="fas fa-times"></i></button>
+                        <h3 id="eventPopupTitle">Title</h3>
+                        <div id="eventPopupContent">Content</div>
+                    </div>
+                </div>
+                <div id="popup-selector" class="popup-overlay">
+                    <div class="selector-card">
+                        <div class="selector-header">
+                            <h3>Cài đặt Ứng dụng</h3>
+                            <p>Chọn thiết bị của bạn để tiếp tục</p>
+                            <button onclick="closeSelectorPopup()" class="btn-close-abs"><i
+                                    class="fas fa-times"></i></button>
+                        </div>
+
+                        <div class="platform-options">
+                            <div class="platform-option android" onclick="handleAndroidClick()">
+                                <div class="plat-icon"><i class="fab fa-android"></i></div>
+                                <div class="plat-text">
+                                    <b>Dành cho Android và PC</b>
+                                    <span>Cài đặt trực tiếp (.apk/PWA)</span>
+                                </div>
+                            </div>
+
+                            <div class="platform-option ios" onclick="handleIOSClick()">
+                                <div class="plat-icon"><i class="fab fa-apple"></i></div>
+                                <div class="plat-text">
+                                    <b>Dành cho iOS</b>
+                                    <span>Cài đặt Profile cấu hình</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="popup-ios-guide" class="popup-overlay">
+                    <div class="guide-card ios-mode">
+                        <div class="guide-header">
+                            <div>
+                                <h3>Cài đặt trên iPhone / iPad</h3>
+                                <div style="font-size:12px; color:var(--text-sec); margin-top:6px">Hướng dẫn từng bước
+                                    để cài cấu
+                                    hình (mobileconfig)</div>
+                            </div>
+                        </div>
+
+                        <div class="guide-body">
+                            <div class="ios-step">
+                                <div class="step-icon"><i class="fas fa-cloud-download-alt"></i></div>
+                                <div class="step-info">
+                                    <b>Bước 1 — Tải hồ sơ</b>
+                                    <p>Nhấn nút "Tải Hồ sơ" bên dưới. Nếu trình duyệt hỏi, chọn <b>Cho phép / Allow</b>.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="ios-step">
+                                <div class="step-icon"><i class="fas fa-file-signature"></i></div>
+                                <div class="step-info">
+                                    <b>Bước 2 — Mở Cài đặt</b>
+                                    <p>Mở <b>Cài đặt</b> → vào phần <b>Đã tải về Hồ sơ</b> hoặc <b>General → Profile</b>
+                                        để xem hồ
+                                        sơ vừa tải.</p>
+                                </div>
+                            </div>
+
+                            <div class="ios-step">
+                                <div class="step-icon"><i class="fas fa-check-circle"></i></div>
+                                <div class="step-info">
+                                    <b>Bước 3 — Cài và Xác nhận</b>
+                                    <p>Chọn hồ sơ, sau đó nhấn <b>Install</b> và xác nhận mã PIN nếu được yêu cầu. Sau
+                                        khi cài xong,
+                                        quay lại ứng dụng.</p>
+                                </div>
+                            </div>
+
+                            <a href="TB8A4.mobileconfig" download class="btn-primary full-width mt-3">
+                                <i class="fab fa-apple"></i> Tải Hồ sơ (Config)
+                            </a>
+
+                            <div style="display:flex; gap:10px; margin-top:12px;">
+                                <button onclick="backToSelector()" class="btn-text-only">Quay lại chọn thiết bị</button>
+                                <button onclick="closeIOSPopup()" class="btn-primary" style="flex:1;">Đã hiểu,
+                                    đóng</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <script src="script.js"></script>
+                <script src="app-banner.js"></script>
+
+</body>
+
+</html>

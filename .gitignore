@@ -1,0 +1,42 @@
+node_modules/
+.env
+.env.local
+.DS_Store
+
+# Private config and generated keys
+TB8A4.mobileconfig
+.keys
+*.mobileconfig
+notifications/.keys
+notifications/VAPID_SETUP.md
+.secret/
+
+# Supabase
+supabase/.env
+
+# IDE
+.idea/
+.vscode/
+
+# Build
+dist/
+build/
+# Documentation files (not to be deployed to Cloudflare Pages)
+# Keep `docs/` ignored, but allow tracked `.md` and `.txt` files (we keep internal docs in `.secret/`)
+docs/
+
+# Debug and temporary files
+DEBUG_NOTIFICATION.js
+NOTIFICATION_FIX.js
+FIX_*.md
+QUICK_START.md
+oldindex.html
+
+# IDE and system files
+.vscode/
+*.log
+.DS_Store
+.env
+.env.local
+# Web Config Secret
+config.js
